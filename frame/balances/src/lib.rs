@@ -529,7 +529,7 @@ decl_module! {
 		/// - Base Weight: 57.36 µs
 		/// - DB Weight: 1 Read and 1 Write to dest (sender is in overlay already)
 		/// #</weight>
-		#[weight = T::DbWeight::get().reads_writes(1, 1) + 60_000_000]
+		#[weight = T::DbWeight::get().reads_writes(1, 1) + 50_000_000]
 		pub fn transfer_keep_alive(
 			origin,
 			dest: <T::Lookup as StaticLookup>::Source,
