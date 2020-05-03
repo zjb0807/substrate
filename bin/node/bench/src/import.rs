@@ -109,7 +109,7 @@ impl core::BenchmarkDescription for ImportBenchmarkDescription {
 	fn setup(self: Box<Self>) -> Box<dyn core::Benchmark> {
 		let profile = self.profile;
 		let mut bench_db = BenchDb::with_key_types(
-			50_000,
+			200_000,
 			self.key_types
 		);
 		let block = bench_db.generate_block(self.block_type);
