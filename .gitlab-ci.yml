@@ -478,7 +478,7 @@ pr-docker-build:            &pr-docker-build
     - docker info
   script:
     - cd ./artifacts/$PRODUCT/
-    - VERSION="CI-${CI_COMMIT_SHORT_SHA}"
+    - VERSION="ci-${CI_COMMIT_SHORT_SHA}"
     - echo "${PRODUCT} version = ${VERSION}"
     - test -z "${VERSION}" && exit 1
     - docker build
@@ -501,10 +501,10 @@ chaos-test-singlenodeheight:
     name:                          parity-chaosnet
   image:                           parity/chaostools:latest
   script:
-    - VERSION="CI-${CI_COMMIT_SHORT_SHA}"
+    - VERSION="ci-${CI_COMMIT_SHORT_SHA}"
     - echo "${PRODUCT} version = ${VERSION}"
     - test -z "${VERSION}" && exit 1
-    - cd ./chaostest
+    - cd ./maintain/chaostest
     - npm link
     - chaostest singlenodeheight -i $CONTAINER_IMAGE:$VERSION
 
