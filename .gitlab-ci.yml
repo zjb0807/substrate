@@ -504,7 +504,7 @@ chaos-test-singlenodeheight:
     - VERSION="ci-${CI_COMMIT_SHORT_SHA}"
     - echo "${PRODUCT} version = ${VERSION}"
     - test -z "${VERSION}" && exit 1
-    - cd ./maintain/chaostest
+    - cd ./.maintain/chaostest
     - npm link
     - chaostest singlenodeheight -i $CONTAINER_IMAGE:$VERSION
 
