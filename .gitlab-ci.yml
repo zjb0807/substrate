@@ -25,6 +25,7 @@ stages:
   # - test
   - build
   # - post-build-test
+  - build-pr
   - chaos
   # - publish
   # - kubernetes
@@ -89,6 +90,7 @@ variables:
     - /^v[0-9]+\.[0-9]+.*$/        # i.e. v1.0, v2.1rc1
     - /^pre-v[0-9]+\.[0-9]+-[0-9a-f]+$/
     - web
+
 
 
 
@@ -366,32 +368,32 @@ variables:
 #   script:
 #     - cargo +nightly test --target wasm32-unknown-unknown -p node-browser-testing -Z features=itarget
 
-# build-linux-substrate:             &build-binary
-#   stage:                           build
-#   <<:                              *collect-artifacts
-#   <<:                              *docker-env
-#   <<:                              *build-only
-#   before_script:
-#     - mkdir -p ./artifacts/substrate/
-#   except:
-#     variables:
-#       - $DEPLOY_TAG
-#   script:
-#     - WASM_BUILD_NO_COLOR=1 time cargo build --release --verbose
-#     - mv ./target/release/substrate ./artifacts/substrate/.
-#     - echo -n "Substrate version = "
-#     - if [ "${CI_COMMIT_TAG}" ]; then
-#         echo "${CI_COMMIT_TAG}" | tee ./artifacts/substrate/VERSION;
-#       else
-#         ./artifacts/substrate/substrate --version |
-#           sed -n -r 's/^substrate ([0-9.]+.*-[0-9a-f]{7,13})-.*$/\1/p' |
-#           tee ./artifacts/substrate/VERSION;
-#       fi
-#     - sha256sum ./artifacts/substrate/substrate | tee ./artifacts/substrate/substrate.sha256
-#     - printf '\n# building node-template\n\n'
-#     - ./.maintain/node-template-release.sh ./artifacts/substrate/substrate-node-template.tar.gz
-#     - cp -r .maintain/docker/substrate.Dockerfile ./artifacts/substrate/
-#     - sccache -s
+build-linux-substrate:             &build-binary
+  stage:                           build
+  <<:                              *collect-artifacts
+  <<:                              *docker-env
+  # <<:                              *build-only
+  before_script:
+    - mkdir -p ./artifacts/substrate/
+  except:
+    variables:
+      - $DEPLOY_TAG
+  script:
+    - WASM_BUILD_NO_COLOR=1 time cargo build --release --verbose
+    - mv ./target/release/substrate ./artifacts/substrate/.
+    - echo -n "Substrate version = "
+    - if [ "${CI_COMMIT_TAG}" ]; then
+        echo "${CI_COMMIT_TAG}" | tee ./artifacts/substrate/VERSION;
+      else
+        ./artifacts/substrate/substrate --version |
+          sed -n -r 's/^substrate ([0-9.]+.*-[0-9a-f]{7,13})-.*$/\1/p' |
+          tee ./artifacts/substrate/VERSION;
+      fi
+    - sha256sum ./artifacts/substrate/substrate | tee ./artifacts/substrate/substrate.sha256
+    - printf '\n# building node-template\n\n'
+    - ./.maintain/node-template-release.sh ./artifacts/substrate/substrate-node-template.tar.gz
+    - cp -r .maintain/docker/substrate.Dockerfile ./artifacts/substrate/
+    - sccache -s
 
 # build-linux-subkey:
 #   <<:                              *build-binary
@@ -455,24 +457,27 @@ variables:
 #     - schedules
 
 pr-docker-build:            &pr-docker-build
-  stage:                           build
+  stage:                           build-pr
   tags: 
     - kubernetes-parity-build
   variables:
+    DOCKER_HOST:                   tcp://localhost:2375
+    DOCKER_DRIVER:                 overlay2
     PRODUCT:                       substrate
     DOCKERFILE:                    $PRODUCT.Dockerfile
-    CONTAINER_IMAGE:               parity/$PRODUCT
+    CONTAINER_IMAGE:               paritypr/$PRODUCT
   environment:
     name:                          parity-chaosnet
   image:                           docker:stable
   services:
     - docker:dind
   before_script:
-    - test "$Docker_Hub_User_Parity" -a "$Docker_Hub_Pass_Parity"
+    - test "$DOCKER_CHAOS_USER" -a "$DOCKER_CHAOS_TOKEN"
         || ( echo "no docker credentials provided"; exit 1 )
-    - docker login -u "$Docker_Hub_User_Parity" -p "$Docker_Hub_Pass_Parity"
+    - docker login -u "$DOCKER_CHAOS_USER" -p "$DOCKER_CHAOS_TOKEN"
     - docker info
   script:
+    - cd ./artifacts/$PRODUCT/
     - VERSION="CI-${CI_COMMIT_SHORT_SHA}"
     - echo "${PRODUCT} version = ${VERSION}"
     - test -z "${VERSION}" && exit 1
@@ -486,16 +491,15 @@ pr-docker-build:            &pr-docker-build
 
 chaos-test-singlenodeheight:
   stage:                           chaos
-  <<:                              *pr-docker-build
   tags: 
     - kubernetes-parity-build
   variables:
     PRODUCT:                       substrate
     DOCKERFILE:                    $PRODUCT.Dockerfile
-    CONTAINER_IMAGE:               parity/$PRODUCT
+    CONTAINER_IMAGE:               paritypr/$PRODUCT
   environment:
     name:                          parity-chaosnet
-  image:                           parity/kubetools:latest
+  image:                           parity/chaostools:latest
   script:
     - VERSION="CI-${CI_COMMIT_SHORT_SHA}"
     - echo "${PRODUCT} version = ${VERSION}"
